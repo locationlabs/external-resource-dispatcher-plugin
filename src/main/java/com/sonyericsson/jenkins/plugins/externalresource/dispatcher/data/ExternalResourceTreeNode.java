@@ -24,6 +24,14 @@
 package com.sonyericsson.jenkins.plugins.externalresource.dispatcher.data;
 
 
+import static com.sonyericsson.hudson.plugins.metadata.model.JsonUtils.CHILDREN;
+import static com.sonyericsson.hudson.plugins.metadata.model.JsonUtils.DESCRIPTION;
+import static com.sonyericsson.hudson.plugins.metadata.model.JsonUtils.EXPOSED;
+import static com.sonyericsson.hudson.plugins.metadata.model.JsonUtils.GENERATED;
+import static com.sonyericsson.hudson.plugins.metadata.model.JsonUtils.NAME;
+import static com.sonyericsson.hudson.plugins.metadata.model.JsonUtils.checkRequiredJsonAttribute;
+import static com.sonyericsson.jenkins.plugins.externalresource.dispatcher.Constants.JSON_ATTR_ENABLED;
+import static com.sonyericsson.jenkins.plugins.externalresource.dispatcher.Constants.JSON_ATTR_ID;
 import com.sonyericsson.hudson.plugins.metadata.model.JsonUtils;
 import com.sonyericsson.hudson.plugins.metadata.model.MetadataContainer;
 import com.sonyericsson.hudson.plugins.metadata.model.values.AbstractMetadataValue;
@@ -38,6 +46,7 @@ import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.model.Descriptor;
 import hudson.model.Hudson;
+import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
@@ -162,7 +171,32 @@ public class ExternalResourceTreeNode extends TreeNodeMetadataValue {
         @Override
         public MetadataValue fromJson(JSONObject json, MetadataContainer<MetadataValue> container)
                 throws JsonUtils.ParseException {
-            return null;
+            checkRequiredJsonAttribute(json, NAME);
+            List<MetadataValue> children = new LinkedList<MetadataValue>();
+            if (json.has(CHILDREN)) {
+                JSONArray array = json.getJSONArray(CHILDREN);
+                for (int i = 0; i < array.size(); i++) {
+                    JSONObject obj = array.getJSONObject(i);
+                    children.add(JsonUtils.toValue(obj, container));
+                }
+            }
+            ExternalResourceTreeNode value = new ExternalResourceTreeNode(
+            		json.getString(NAME), 
+            		json.optString(DESCRIPTION),
+            		children);
+            
+            //TODO what about External Resource Manager? json field is not read
+
+            if (json.has(EXPOSED)) {
+                value.setExposeToEnvironment(json.getBoolean(EXPOSED));
+            }
+            if (json.has(GENERATED)) {
+                value.setGenerated(json.getBoolean(GENERATED));
+            } else {
+                //TODO Decide if this is really what should be done.
+                value.setGenerated(true);
+            }
+            return value;
         }
 
         @Override
